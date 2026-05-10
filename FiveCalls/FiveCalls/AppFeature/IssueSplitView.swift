@@ -16,11 +16,17 @@ struct IssueSplitView: View {
                         IssueDetail(issue: selectedIssue)
                             .id(selectedIssue.id)
                             .toolbar(.hidden, for: .tabBar)
+                            // Re-inject `store` on each navigationDestination: SwiftUI normally
+                            // propagates EnvironmentObjects, but during iPad system snapshots and
+                            // state restoration the destination is rebuilt outside the WindowGroup's
+                            // environment, which crashes any pushed view that uses @EnvironmentObject.
                             .navigationDestination(for: IssueDetailNavModel.self) { idnm in
                                 IssueContactDetail(issue: idnm.issue, remainingContacts: idnm.contacts)
+                                    .environmentObject(store)
                             }
                             .navigationDestination(for: IssueDoneNavModel.self) { inm in
                                 IssueDone(issue: inm.issue)
+                                    .environmentObject(store)
                             }
                     } else {
                         VStack(alignment: .leading) {
