@@ -38,6 +38,7 @@ struct IssueContactDetail: View {
     @State private var copiedPhoneNumber: String?
     @AccessibilityFocusState private var isCopiedPhoneNumberFocused: Bool
     @State private var isPresentingOutcomeHelpSheet = false
+    @State private var lastDialedPhone: String = ""
 
     var body: some View {
         ScrollView {
@@ -106,13 +107,7 @@ struct IssueContactDetail: View {
                         if currentContact.fieldOffices.count >= 1 {
                             Menu {
                                 ForEach(currentContact.fieldOffices) { office in
-                                    // ControlGroup doesn't render < 16.4 (https://github.com/5calls/ios/pull/446)
-                                    if #available(iOS 16.4, *) {
-                                        ControlGroup {
-                                            MenuButtonsView(office: office, copiedPhoneNumber: $copiedPhoneNumber,
-                                                            isCopiedPhoneNumberFocused: _isCopiedPhoneNumberFocused, call: call)
-                                        }
-                                    } else {
+                                    ControlGroup {
                                         MenuButtonsView(office: office, copiedPhoneNumber: $copiedPhoneNumber,
                                                         isCopiedPhoneNumberFocused: _isCopiedPhoneNumberFocused, call: call)
                                     }
@@ -132,7 +127,7 @@ struct IssueContactDetail: View {
                     .padding(.bottom)
 
                 OutcomesView(outcomes: issue.outcomeModels, report: { outcome in
-                    let log = ContactLog(issueId: String(issue.id), contactId: currentContact.id, phone: "", outcome: outcome.status, date: Date(), reported: true)
+                    let log = ContactLog(issueId: String(issue.id), contactId: currentContact.id, phone: lastDialedPhone, outcome: outcome.status, date: Date(), reported: true)
                     store.dispatch(action: .ReportOutcome(issue, log, outcome))
                     store.dispatch(action: .GoToNext(issue, nextContacts))
                 })
@@ -160,6 +155,7 @@ struct IssueContactDetail: View {
     }
 
     private func call(phoneNumber: String) {
+        lastDialedPhone = phoneNumber
         let telephone = "tel://"
         let formattedString = telephone + phoneNumber
         guard let url = URL(string: formattedString) else { return }
@@ -198,44 +194,41 @@ struct MenuButtonsView: View {
             )
         )
 
-        // disable copy < 16.4 for rationale see https://github.com/5calls/ios/pull/446
-        if #available(iOS 16.4, *) {
-            Button {
-                UIPasteboard.general.string = office.phone
-                withAnimation {
-                    copiedPhoneNumber = office.phone
-                    if UIAccessibility.isVoiceOverRunning {
-                        isCopiedPhoneNumberFocused = true
-                    }
-                }
-
-                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 3) {
-                    withAnimation {
-                        isCopiedPhoneNumberFocused = false
-                        copiedPhoneNumber = nil
-                    }
-                }
-            } label: {
-                if dynamicTypeSize >= .accessibility1 {
-                    Text("Copy \(office.city) \(office.phone)", comment: "Copy phone numbers text")
-                } else {
-                    Image(systemName: "doc.on.doc")
-                    Text("Copy", comment: "Copy phone number short text")
+        Button {
+            UIPasteboard.general.string = office.phone
+            withAnimation {
+                copiedPhoneNumber = office.phone
+                if UIAccessibility.isVoiceOverRunning {
+                    isCopiedPhoneNumberFocused = true
                 }
             }
-            .accessibilityLabel(
-                String(
-                    localized: "Copy \(office.city) \(office.phone)",
-                    comment: "Copy phone numbers accessibility label"
-                )
-            )
-            .accessibilityHint(
-                String(
-                    localized: "Triple tap to copy",
-                    comment: "Copy phone number accessibility hint"
-                )
-            )
+
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 3) {
+                withAnimation {
+                    isCopiedPhoneNumberFocused = false
+                    copiedPhoneNumber = nil
+                }
+            }
+        } label: {
+            if dynamicTypeSize >= .accessibility1 {
+                Text("Copy \(office.city) \(office.phone)", comment: "Copy phone numbers text")
+            } else {
+                Image(systemName: "doc.on.doc")
+                Text("Copy", comment: "Copy phone number short text")
+            }
         }
+        .accessibilityLabel(
+            String(
+                localized: "Copy \(office.city) \(office.phone)",
+                comment: "Copy phone numbers accessibility label"
+            )
+        )
+        .accessibilityHint(
+            String(
+                localized: "Triple tap to copy",
+                comment: "Copy phone number accessibility hint"
+            )
+        )
     }
 }
 
