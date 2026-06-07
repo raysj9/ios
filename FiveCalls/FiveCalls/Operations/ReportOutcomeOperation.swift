@@ -41,7 +41,7 @@ class ReportOutcomeOperation: BaseOperation, @unchecked Sendable {
             "result": outcome.label,
             "contactid": log.contactId,
             "issueid": log.issueId,
-            "phone": log.phone,
+            "phone": log.phone.filter(\.isNumber),
             "via": via,
             "callerid": AnalyticsManager.shared.callerID,
         ]
